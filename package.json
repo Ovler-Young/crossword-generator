@@ -13,7 +13,7 @@
     "cross word"
   ],
   "scripts": {
-    "build": "webpack --config ./public/webpack.prod.js",
+    "build": "webpack --config ./public/webpack.prod.js && webpack --config ./public/webpack.docs.js",
     "dev": "node ./public/server.js"
   },
   "devDependencies": {
