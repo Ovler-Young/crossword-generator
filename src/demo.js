@@ -36,13 +36,13 @@ const gen = () => {
     line.forEach((obj, x) => {
       ctnr.appendChild(g({
         id: x + '' + y,
-        dataletter: obj.letter,
-        datav: obj.v,
-        datah: obj.h,
-        datax: x,
-        datay: y,
-        datavidx: obj.vIdx,
-        datahidx: obj.hIdx,
+        $letter: obj.letter,
+        $v: obj.v,
+        $h: obj.h,
+        $x: '' + x,
+        $y: '' + y,
+        $vidx: obj.vIdx,
+        $hidx: obj.hIdx,
         maxlength: 1,
         autocomplete: 'disabled',
         style: {
@@ -97,10 +97,10 @@ $('toggle').onclick = () => {
   if (!ctnr) return
   const inputs = ctnr.querySelectorAll('input')
   inputs.forEach(input => {
-    if (input.value === input.getAttribute('dataletter')) {
+    if (input.value === input.dataset.letter) {
       input.value = ''
     } else {
-      input.value = input.getAttribute('dataletter')
+      input.value = input.dataset.letter
     }
   })
 }
