@@ -1,4 +1,4 @@
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
 const base = require('./webpack.base')
 const webpack = require('webpack')
 const HtmlWbpk = require('html-webpack-plugin')
@@ -11,15 +11,10 @@ module.exports = merge(base, {
   mode: 'development',
   devtool: 'cheap-module-source-map',
   plugins: [
-    new HtmlWbpk({
-      template: 'public/index.html'
-    }),
-    new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoEmitOnErrorsPlugin()
+    new HtmlWbpk({ template: 'public/index.html' }),
+    new webpack.HotModuleReplacementPlugin()
   ],
-  performance: {
-    hints: false
-  },
+  performance: { hints: false },
   module: {
     rules: [
       {

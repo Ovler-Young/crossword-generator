@@ -14,37 +14,20 @@ module.exports = {
       {
         test: /\.js$/,
         exclude: /node_modules/,
-        use: [{
+        use: {
           loader: 'babel-loader',
-          options: {
-            cacheDirectory: true
-          }
-        }, {
-          loader: 'eslint-loader',
-          options: {
-            emitWarning: true
-            // cache: true
-          }
-        }]
+          options: { cacheDirectory: true }
+        }
       },
       {
         test: /\.(png|svg|jpe?g|gif)$/,
-        use: [{
-          loader: 'url-loader',
-          options: {
-            limit: 8192,
-            name: 'img/[name].[hash:4].[ext]'
-          }
-        }]
+        type: 'asset/resource',
+        generator: { filename: 'img/[name].[hash:4][ext]' }
       },
       {
         test: /\.(woff|woff2|eot|ttf|otf)$/,
-        use: [{
-          loader: 'file-loader',
-          options: {
-            name: 'fonts/[name].[hash:4].[ext]'
-          }
-        }]
+        type: 'asset/resource',
+        generator: { filename: 'fonts/[name].[hash:4][ext]' }
       }
     ]
   }

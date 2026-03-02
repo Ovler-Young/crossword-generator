@@ -1,14 +1,12 @@
-const merge = require('webpack-merge')
+const { merge } = require('webpack-merge')
 const base = require('./webpack.base.js')
-const CleanWbpk = require('clean-webpack-plugin')
-const UglifyJsPlugin = require("uglifyjs-webpack-plugin")
-const FriendlyErrors = require('friendly-errors-webpack-plugin')
-
+const TerserPlugin = require('terser-webpack-plugin')
 
 module.exports = merge(base, {
   entry: ['./src/App.js'],
   output: {
-    libraryTarget: 'commonjs2',
+    clean: true,
+    library: { type: 'commonjs2' },
     filename: 'crossword-generator.min.js'
   },
   mode: 'production',
@@ -21,22 +19,8 @@ module.exports = merge(base, {
     modules: false
   },
   optimization: {
-
     minimizer: [
-      new UglifyJsPlugin({
-        cache: true,
-        extractComments: false
-      }),
-
+      new TerserPlugin({ extractComments: false })
     ]
-  },
-  plugins: [
-    new FriendlyErrors(),
-    new CleanWbpk(['../dist'], {
-      allowExternal: true,
-      verbose: false
-    }),
-
-  ],
-
+  }
 })
