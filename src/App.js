@@ -1,197 +1,214 @@
-export default arr => {
-  // increase the probability of having an answer
-  // const sortedArr = arr
-  const sortedArr = sortArr(arr)
-  return draw([{ wordStr: sortedArr.pop(), xNum: 0, yNum: 0, isHorizon: true }], sortedArr.pop())
+export default function CWG(wordsList) {
+    const words = wordsList
+        .map((text, index) => ({ text, id: index }))
+        .filter(w => w.text.length > 0);
 
-  function sortArr(arr) {
-    return [...arr].sort((pre, nex) => pre.length - nex.length)
-  }
+    if (words.length === 0) return null;
 
-  function shuffleArr(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      const tmp = arr[i]
-      arr[i] = arr[j]
-      arr[j] = tmp
-    }
-    return arr
-  }
+    const charFreq = {};
+    words.forEach(w => {
+        for (let char of w.text) {
+            charFreq[char] = (charFreq[char] || 0) + 1;
+        }
+    });
 
-  // positionObjArr:
-  // {
-  //   wordStr: 'prototype',
-  //   xNum: 0,
-  //   yNum: 0,
-  //   isHorizon: true
-  // }
-  function letterMapOfPositionObjArr(positionObjArr) {
-    const rtn = {}
-    positionObjArr.forEach(positionObj => {
-      for (let i = 0, len = positionObj.wordStr.length; i < len; i += 1) {
-        const letter = positionObj.wordStr[i]
-        if (!rtn[letter]) rtn[letter] = []
-        rtn[letter].push({
-          x: positionObj.xNum + (positionObj.isHorizon ? i : 0),
-          y: positionObj.yNum + (positionObj.isHorizon ? 0 : i)
-        })
-      }
-    })
-    return rtn
-  }
+    words.forEach(w => {
+        w.connScore = w.text.split('').reduce((sum, char) => sum + charFreq[char], 0);
+    });
 
-  // letterMap:
-  // {
-  //   x: [{x: -1, y: -1}],
-  //   y: [{x: -1, y:  0}, {x: 0, y: 0}],
-  //   z: [{x:  0, y:  1}, {x: 1, y: 1}]
-  // }
-  function findPosition({ letterMap, wordStr }) {
-    const matrixObj = letterMapToMatrix(letterMap)
-    if (!wordStr) return []
-    const available = []
-    const len = wordStr.length
-    for (let i = 0; i < len; i += 1) {
-      const letter = wordStr[i]
-      if (!letterMap[letter]) continue
-      letterMap[letter].forEach(xyObj => {
-        const xNum = xyObj.x
-        const yNum = xyObj.y
-        const isHorizon = matrixObj[yNum][xNum + 1] === undefined
+    let bestGrid = null;
+    let bestScore = Infinity;
 
-        if (isHorizon) {
-          // o[y][x - 1] must have no letter if o[y][x] is horizon
-          if (matrixObj[yNum][xNum - i - 1] !== undefined) return
-          if (matrixObj[yNum][xNum - i + len] !== undefined) return
-          for (let j = 0; j < len; j += 1) {
-            if (i === j) continue
-            if (matrixObj[yNum - 1] && matrixObj[yNum - 1][xNum - i + j] !== undefined) return
-            if (matrixObj[yNum][xNum - i + j] !== undefined) return
-            if (matrixObj[yNum + 1] && matrixObj[yNum + 1][xNum - i + j] !== undefined) return
-          }
+    const MAX_TIME_MS = 150;
+    const startTime = Date.now();
+    let attemptCount = 0;
+
+    while (Date.now() - startTime < MAX_TIME_MS) {
+        attemptCount++;
+        let unplaced = [...words];
+
+        if (attemptCount === 1) {
+            unplaced.sort((a, b) => b.connScore - a.connScore);
+        } else if (attemptCount === 2) {
+            unplaced.sort((a, b) => b.text.length - a.text.length);
         } else {
-          if (matrixObj[yNum - i - 1] && matrixObj[yNum - i - 1][xNum] !== undefined) return
-          if (matrixObj[yNum - i + len] && matrixObj[yNum - i + len][xNum] !== undefined) return
-          for (let j = 0; j < len; j += 1) {
-            if (i === j || matrixObj[yNum - i + j] === undefined) continue
-            if (matrixObj[yNum - i + j][xNum - 1] !== undefined) return
-            if (matrixObj[yNum - i + j][xNum] !== undefined) return
-            if (matrixObj[yNum - i + j][xNum + 1] !== undefined) return
-          }
+            for (let i = unplaced.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [unplaced[i], unplaced[j]] = [unplaced[j], unplaced[i]];
+            }
+            if (Math.random() > 0.5) {
+                unplaced.sort((a, b) => (b.connScore * Math.random()) - (a.connScore * Math.random()));
+            }
         }
 
-        available.push({
-          wordStr,
-          xNum: xyObj.x - (isHorizon ? i : 0),
-          yNum: xyObj.y - (isHorizon ? 0 : i),
-          isHorizon
-        })
-      })
+        let grid = new Map();
+        let first = unplaced.shift();
+
+        let currentBounds = { minX: 0, maxX: first.text.length - 1, minY: 0, maxY: 0 };
+        placeWord(grid, first.text, first.id, 0, 0, true);
+
+        let placedSomething = true;
+        let totalIntersections = 0;
+
+        while (unplaced.length > 0 && placedSomething) {
+            placedSomething = false;
+            let validPlacements = [];
+
+            for (let i = 0; i < unplaced.length; i++) {
+                let w = unplaced[i];
+
+                for (let [coords, cell] of grid.entries()) {
+                    let [gx, gy] = coords.split(',').map(Number);
+
+                    for (let cIdx = 0; cIdx < w.text.length; cIdx++) {
+                        if (w.text[cIdx] === cell.char) {
+                            if (cell.vWordId !== undefined && cell.hWordId === undefined) {
+                                let startX = gx - cIdx;
+                                let startY = gy;
+                                let test = tryPlace(grid, w.text, startX, startY, true);
+                                if (test.valid) {
+                                    let newArea = getNewArea(currentBounds, startX, startY, w.text.length, true);
+                                    let score = newArea - test.intersections * 200;
+                                    validPlacements.push({ wordIdx: i, w, startX, startY, isHorizontal: true, score, intersections: test.intersections });
+                                }
+                            }
+
+                            if (cell.hWordId !== undefined && cell.vWordId === undefined) {
+                                let startX = gx;
+                                let startY = gy - cIdx;
+                                let test = tryPlace(grid, w.text, startX, startY, false);
+                                if (test.valid) {
+                                    let newArea = getNewArea(currentBounds, startX, startY, w.text.length, false);
+                                    let score = newArea - test.intersections * 200;
+                                    validPlacements.push({ wordIdx: i, w, startX, startY, isHorizontal: false, score, intersections: test.intersections });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (validPlacements.length > 0) {
+                validPlacements.sort((a, b) => a.score - b.score);
+
+                let bestLocalScore = validPlacements[0].score;
+                let topChoices = validPlacements.filter(p => p.score <= bestLocalScore + 50);
+
+                let best = topChoices[Math.floor(Math.random() * topChoices.length)];
+
+                placeWord(grid, best.w.text, best.w.id, best.startX, best.startY, best.isHorizontal);
+                updateBounds(currentBounds, best.startX, best.startY, best.w.text.length, best.isHorizontal);
+                totalIntersections += best.intersections;
+
+                unplaced.splice(best.wordIdx, 1);
+                placedSomething = true;
+            }
+        }
+
+        if (unplaced.length === 0) {
+            let width = currentBounds.maxX - currentBounds.minX + 1;
+            let height = currentBounds.maxY - currentBounds.minY + 1;
+            let finalArea = width * height;
+
+            let aspectPenalty = Math.abs(width - height) * 2;
+            let finalScore = finalArea - totalIntersections * 200 + aspectPenalty;
+
+            if (finalScore < bestScore) {
+                bestScore = finalScore;
+                bestGrid = { grid, bounds: currentBounds, width, height, finalArea };
+            }
+        }
     }
-    return available
-  }
 
-  // matrixObj:
-  // {
-  //   -1: [-1: 'x', 0: 'y'        ],
-  //    0: [         0: 'y', 1: 'z'],
-  //    1: [                 1: 'z']
-  // }
-  function letterMapToMatrix(letterMap) {
-    const matrix = []
-    Object.keys(letterMap).forEach(letter => {
-      letterMap[letter].forEach(letterObj => {
-        const y = letterObj.y
-        const x = letterObj.x
-        if (!matrix[y]) matrix[y] = {}
-        matrix[y][x] = letter
-      })
-    })
-    return matrix
-  }
+    if (!bestGrid) return null;
 
-  function draw(positionObjArr, wordStr) {
-    const letterMap = letterMapOfPositionObjArr(positionObjArr)
-    if (!wordStr) return output(positionObjArr)
-    const nextObjArr = findPosition({
-      wordStr,
-      letterMap: letterMap
-    })
-    if (nextObjArr.length) {
-      const arr = shuffleArr(nextObjArr)
-      const theWordStr = sortedArr.pop()
-      for (let i = 0; i < nextObjArr.length; i += 1) {
-        const nextObj = arr[i]
-        const ans = draw(positionObjArr.concat(nextObj), theWordStr)
-        if (ans) {
-          positionObjArr.push(nextObj)
-          sortedArr.push(theWordStr)
-          return ans
-        }
-      }
-      sortedArr.push(theWordStr)
-      return false
-    } else return false
-  }
+    let ownerMap = [];
+    for (let y = 0; y < bestGrid.height; y++) {
+        ownerMap.push([]);
+    }
 
-  function output(positionObjArr) {
-    let translateX = 0
-    let translateY = 0
-    let maxX = 0
-    let maxY = 0
+    for (let [coords, cell] of bestGrid.grid.entries()) {
+        let [x, y] = coords.split(',').map(Number);
+        let normX = x - bestGrid.bounds.minX;
+        let normY = y - bestGrid.bounds.minY;
 
-    positionObjArr.forEach(positionObj => {
-      const wordLen = positionObj.wordStr.length
-      const isHorizon = positionObj.isHorizon
-      const currentX = positionObj.xNum
-      const currentY = positionObj.yNum
-      const tailX = currentX + wordLen * (isHorizon ? 1 : 0)
-      const tailY = currentY + wordLen * (isHorizon ? 0 : 1)
-      if (tailX > maxX) maxX = tailX
-      if (tailY > maxY) maxY = tailY
-      if (currentX < translateX) translateX = currentX
-      if (currentY < translateY) translateY = currentY
-    })
+        let obj = { letter: cell.char };
+        if (cell.hWordId !== undefined) obj.h = cell.hWordId;
+        if (cell.vWordId !== undefined) obj.v = cell.vWordId;
+        if (cell.hIdx !== undefined) obj.hIdx = cell.hIdx;
+        if (cell.vIdx !== undefined) obj.vIdx = cell.vIdx;
 
-    const order = arr.reduce((iter, val, idx) => {
-      iter[val] = idx
-      return iter
-    }, {})
-
-    const newPositionObjArr = positionObjArr.map(positionObj => {
-      const rtn = positionObj
-      rtn.xNum -= translateX
-      rtn.yNum -= translateY
-      return rtn
-    }).sort((a, b) => order[a.wordStr] - order[b.wordStr])
-
-    const height = maxY - translateY
-    const width = maxX - translateX
-
-    const ownerMap = new Array(height).fill(0).map(() => new Array(width))
-
-    newPositionObjArr.forEach((positionObj, orderIdx) => {
-      const letterArr = positionObj.wordStr.split('')
-      const isHorizon = positionObj.isHorizon
-      const startY = positionObj.yNum
-      const startX = positionObj.xNum
-      letterArr.forEach((letter, letterIdx) => {
-        const x = startX + (isHorizon ? letterIdx : 0)
-        const y = startY + (isHorizon ? 0 : letterIdx)
-        const obj = {letter}
-        const key = isHorizon ? 'h' : 'v'
-        const target = ownerMap[y][x] || obj
-        target[key] = orderIdx
-        target[key + 'Idx'] = letterIdx
-        if (!ownerMap[y][x]) ownerMap[y][x] = obj
-      })
-    })
+        ownerMap[normY][normX] = obj;
+    }
 
     return {
-      height,
-      width,
-      positionObjArr: newPositionObjArr,
-      ownerMap
+        width: bestGrid.width,
+        height: bestGrid.height,
+        ownerMap
+    };
+}
+
+function tryPlace(grid, word, startX, startY, isHorizontal) {
+    if (isHorizontal) {
+        if (grid.has(`${startX - 1},${startY}`)) return { valid: false };
+        if (grid.has(`${startX + word.length},${startY}`)) return { valid: false };
+    } else {
+        if (grid.has(`${startX},${startY - 1}`)) return { valid: false };
+        if (grid.has(`${startX},${startY + word.length}`)) return { valid: false };
     }
-  }
+
+    let intersections = 0;
+
+    for (let i = 0; i < word.length; i++) {
+        let x = isHorizontal ? startX + i : startX;
+        let y = isHorizontal ? startY : startY + i;
+        let char = word[i];
+        let cell = grid.get(`${x},${y}`);
+
+        if (cell) {
+            if (cell.char !== char) return { valid: false };
+            if (isHorizontal && cell.hWordId !== undefined) return { valid: false };
+            if (!isHorizontal && cell.vWordId !== undefined) return { valid: false };
+            intersections++;
+        } else {
+            if (isHorizontal) {
+                if (grid.has(`${x},${y - 1}`) || grid.has(`${x},${y + 1}`)) return { valid: false };
+            } else {
+                if (grid.has(`${x - 1},${y}`) || grid.has(`${x + 1},${y}`)) return { valid: false };
+            }
+        }
+    }
+    return { valid: true, intersections };
+}
+
+function placeWord(grid, word, id, startX, startY, isHorizontal) {
+    for (let i = 0; i < word.length; i++) {
+        let x = isHorizontal ? startX + i : startX;
+        let y = isHorizontal ? startY : startY + i;
+        let cell = grid.get(`${x},${y}`) || { char: word[i] };
+
+        if (isHorizontal) {
+            cell.hWordId = id;
+            cell.hIdx = i;
+        } else {
+            cell.vWordId = id;
+            cell.vIdx = i;
+        }
+        grid.set(`${x},${y}`, cell);
+    }
+}
+
+function getNewArea(bounds, startX, startY, length, isHorizontal) {
+    let minX = Math.min(bounds.minX, startX);
+    let maxX = Math.max(bounds.maxX, isHorizontal ? startX + length - 1 : startX);
+    let minY = Math.min(bounds.minY, startY);
+    let maxY = Math.max(bounds.maxY, isHorizontal ? startY : startY + length - 1);
+    return (maxX - minX + 1) * (maxY - minY + 1);
+}
+
+function updateBounds(bounds, startX, startY, length, isHorizontal) {
+    bounds.minX = Math.min(bounds.minX, startX);
+    bounds.maxX = Math.max(bounds.maxX, isHorizontal ? startX + length - 1 : startX);
+    bounds.minY = Math.min(bounds.minY, startY);
+    bounds.maxY = Math.max(bounds.maxY, isHorizontal ? startY : startY + length - 1);
 }

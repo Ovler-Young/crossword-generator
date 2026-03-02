@@ -15,11 +15,16 @@ const gen = () => {
   }
   const result = CWG(words)
 
+  if (!result) {
+    alert('Failed to generate crossword. Words may not share enough characters.')
+    return
+  }
+
   const ctnr = g({
     id: 'ctnr',
     style: {
-      height: 30 * result.height + 4,
-      width: 30 * result.width + 4
+      height: 30 * result.height + 4 + 'px',
+      width: 30 * result.width + 4 + 'px'
     }
   })()
   const hint = g({id: 'hint'})()
@@ -41,8 +46,8 @@ const gen = () => {
         maxlength: 1,
         autocomplete: 'disabled',
         style: {
-          left: 30 * x,
-          top: 30 * y
+          left: 30 * x + 'px',
+          top: 30 * y + 'px'
         }
       }, 'input')())
       count += 1
@@ -86,3 +91,16 @@ const gen = () => {
 }
 
 $('gen').onclick = gen
+
+$('toggle').onclick = () => {
+  const ctnr = $('ctnr')
+  if (!ctnr) return
+  const inputs = ctnr.querySelectorAll('input')
+  inputs.forEach(input => {
+    if (input.value === input.getAttribute('dataletter')) {
+      input.value = ''
+    } else {
+      input.value = input.getAttribute('dataletter')
+    }
+  })
+}
